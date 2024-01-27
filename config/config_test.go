@@ -22,6 +22,8 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, Config.ImageMap, map[string]string{})
 	assert.Equal(t, Config.ExhaustPath, "./exhaust")
 	assert.Equal(t, Config.MaxCacheSize, 0)
+	assert.Equal(t, Config.RedisURL, "")
+	assert.Equal(t, Config.RedisTTL, 259200)
 }
 
 func TestSwitchProxyMode(t *testing.T) {
