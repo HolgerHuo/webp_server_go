@@ -2,16 +2,19 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 	"webp_server_go/config"
 	"webp_server_go/helper"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/h2non/filetype"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -80,8 +83,33 @@ func downloadFile(filepath string, url string) http.Header {
 func fetchRemoteImg(url string, subdir string) (metaContent config.MetaFile) {
 	// url is https://test.webp.sh/mypic/123.jpg?someother=200&somebugs=200
 	// How do we know if the remote img is changed? we're using hash(etag+length)
-	log.Infof("Remote Addr is %s, pinging for info...", url)
-	etag := pingURL(url)
+	var cacheKey, etag string
+	if config.Cache != nil {
+		cacheKey = subdir+":"+helper.HashString(url)
+	}
+	
+	if cacheKey != "" {
+		val, err := config.Cache.Get(context.TODO(), cacheKey).Result()
+		if err == nil {
+			log.Infof("Using cache for remote addr: %s", url)
+			etag = val
+		} else if err != redis.Nil {
+			log.Warnf("Redis server unreachable, skipping for now.")
+		}
+	}
+	
+	if etag == "" {
+		log.Infof("Remote Addr is %s, pinging for info...", url)
+		etag = pingURL(url)
+		if cacheKey != "" {
+			err := config.Cache.Set(context.TODO(), cacheKey, etag, time.Duration(config.Config.RedisTTL) * time.Second).Err()
+			if err != nil {
+				log.Warnf("Redis server unreachable, skipping for now.")
+			}
+		}
+		
+	}
+	
 	metadata := helper.ReadMetadata(url, etag, subdir)
 	remoteFileExtension := path.Ext(url)
 	localRawImagePath := path.Join(config.Config.RemoteRawPath, subdir, metadata.Id) + remoteFileExtension

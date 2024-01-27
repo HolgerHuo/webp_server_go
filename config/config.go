@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,6 +40,8 @@ const (
   "CONCURRENCY": 262144,
   "DISABLE_KEEPALIVE": false,
   "MAX_CACHE_SIZE": 0
+  "REDIS_URL": "",
+  "REDIS_TTL": 259200,
 }`
 )
 
@@ -59,6 +63,7 @@ var (
 	ConvertLock         = cache.New(5*time.Minute, 10*time.Minute)
 	LocalHostAlias      = "local"
 	DefaultAllowedTypes = []string{"jpg", "png", "jpeg", "bmp", "gif", "svg", "nef", "heic", "webp", "avif", "jxl"} // Default allowed image types
+	Cache          *redis.Client
 )
 
 type ImageMeta struct {
@@ -103,6 +108,8 @@ type WebpConfig struct {
 	Concurrency      int  `json:"CONCURRENCY"`
 	DisableKeepalive bool `json:"DISABLE_KEEPALIVE"`
 	MaxCacheSize int `json:"MAX_CACHE_SIZE"` // In MB, for max cached exhausted/metadata files(plus remote-raw if applicable), 0 means no limit
+	RedisURL         string            `json:"REDIS_URL"`
+	RedisTTL     	 int               `json:"REDIS_TTL"`
 }
 
 func NewWebPConfig() *WebpConfig {
@@ -132,6 +139,8 @@ func NewWebPConfig() *WebpConfig {
 		Concurrency:                262144,
 		DisableKeepalive:           false,
 		MaxCacheSize: 0,
+		RedisURL:          "",
+		RedisTTL:          259200,
 	}
 }
 
@@ -267,6 +276,27 @@ func LoadConfig() {
 			Config.DisableKeepalive = false
 		} else {
 			log.Warnf("WEBP_DISABLE_KEEPALIVE is not a valid boolean, using value in config.json %t", Config.DisableKeepalive)
+		}
+	}
+	if os.Getenv("REDIS_URL") != "" {
+		Config.RedisURL = os.Getenv("REDIS_URL")
+	}
+	if os.Getenv("REDIS_TTL") != "" {
+		redisTTL, err := strconv.Atoi(os.Getenv("REDIS_TTL"))
+		if err != nil {
+			log.Warnf("REDIS_TTL is not a valid integer, using value in config.json %d", Config.RedisTTL)
+		} else {
+			Config.RedisTTL = redisTTL
+		}
+	}
+
+	opts, err := redis.ParseURL(Config.RedisURL)
+	if err != nil {
+		log.Warnf("Redis URL: %v cannot be parsed", Config.RedisURL)
+	} else {
+		Cache = redis.NewClient(opts)
+		if err := Cache.Ping(context.TODO()).Err(); err != nil {
+			log.Warnf("Pinging redis db failed with exception: %v", err.Error())
 		}
 	}
 
