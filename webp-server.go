@@ -9,6 +9,7 @@ import (
 	"webp_server_go/encoder"
 	"webp_server_go/handler"
 	schedule "webp_server_go/schedule"
+	"webp_server_go/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/etag"
@@ -112,6 +113,7 @@ func main() {
 	app.Use(etag.New(etag.Config{
 		Weak: true,
 	}))
+	app.Use(middleware.Headers())
 
 	listenAddress := config.Config.Host + ":" + config.Config.Port
 
