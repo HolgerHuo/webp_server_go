@@ -24,6 +24,11 @@ RUN dpkg -i /build/assets/libaom3_3.11.0-1_$(dpkg --print-architecture).deb && \
 COPY --from=builder /build/webp-server  /usr/bin/webp-server
 COPY --from=builder /build/config.json /etc/config.json
 
+RUN useradd -u 1000 john
+
+RUN chown -R john:john /opt 
+USER john
+
 WORKDIR /opt
 VOLUME /opt/exhaust
 CMD ["/usr/bin/webp-server", "--config", "/etc/config.json"]

@@ -16,6 +16,7 @@ func Headers() fiber.Handler {
 		diff := time.Since(start)
 		c.Append("X-Processing-Time", fmt.Sprintf("%dms", diff.Milliseconds()))
 
+		c.Append("X-Powered-By", "DragonCloud Images (DEU)")
 		return err
 	}
 }
