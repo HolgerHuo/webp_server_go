@@ -19,6 +19,11 @@ RUN apt update && apt install --no-install-recommends libvips ca-certificates li
 COPY --from=builder /build/webp-server  /usr/bin/webp-server
 COPY --from=builder /build/config.json /etc/config.json
 
+RUN useradd -u 1000 john
+
+RUN chown -R john:john /opt 
+USER john
+
 WORKDIR /opt
 VOLUME /opt/exhaust
 CMD ["/usr/bin/webp-server", "--config", "/etc/config.json"]
