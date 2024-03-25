@@ -8,7 +8,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 	"webp_server_go/config"
 	"webp_server_go/helper"
 
@@ -102,7 +101,7 @@ func fetchRemoteImg(url string, subdir string) (metaContent config.MetaFile) {
 		log.Infof("Remote Addr is %s, pinging for info...", url)
 		etag = pingURL(url)
 		if cacheKey != "" {
-			err := config.Cache.Set(context.TODO(), cacheKey, etag, time.Duration(config.Config.RedisTTL) * time.Second).Err()
+			err := config.Cache.Set(context.TODO(), cacheKey, etag, 0).Err()
 			if err != nil {
 				log.Warnf("Redis server unreachable, skipping for now.")
 			}
