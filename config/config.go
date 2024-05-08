@@ -37,7 +37,6 @@ const (
   "READ_BUFFER_SIZE": 4096,
   "CONCURRENCY": 262144,
   "DISABLE_KEEPALIVE": false,
-  "CACHE_TTL": 259200,
   "MAX_CACHE_SIZE": 0
 }`
 )
@@ -59,7 +58,6 @@ var (
 	WriteLock           = cache.New(5*time.Minute, 10*time.Minute)
 	ConvertLock         = cache.New(5*time.Minute, 10*time.Minute)
 	LocalHostAlias      = "local"
-	RemoteCache         *cache.Cache
 	DefaultAllowedTypes = []string{"jpg", "png", "jpeg", "bmp", "gif", "svg", "nef", "heic", "webp", "avif", "jxl"} // Default allowed image types
 )
 
@@ -104,8 +102,6 @@ type WebpConfig struct {
 	ReadBufferSize   int  `json:"READ_BUFFER_SIZE"`
 	Concurrency      int  `json:"CONCURRENCY"`
 	DisableKeepalive bool `json:"DISABLE_KEEPALIVE"`
-	CacheTTL         int  `json:"CACHE_TTL"` // In minutes
-
 	MaxCacheSize int `json:"MAX_CACHE_SIZE"` // In MB, for max cached exhausted/metadata files(plus remote-raw if applicable), 0 means no limit
 }
 
@@ -135,8 +131,6 @@ func NewWebPConfig() *WebpConfig {
 		ReadBufferSize:             4096,
 		Concurrency:                262144,
 		DisableKeepalive:           false,
-		CacheTTL:                   259200,
-
 		MaxCacheSize: 0,
 	}
 }
@@ -274,20 +268,6 @@ func LoadConfig() {
 		} else {
 			log.Warnf("WEBP_DISABLE_KEEPALIVE is not a valid boolean, using value in config.json %t", Config.DisableKeepalive)
 		}
-	}
-	if os.Getenv("WEBP_CACHE_TTL") != "" {
-		cacheTTL, err := strconv.Atoi(os.Getenv("WEBP_CACHE_TTL"))
-		if err != nil {
-			log.Warnf("WEBP_CACHE_TTL is not a valid integer, using value in config.json %d", Config.CacheTTL)
-		} else {
-			Config.CacheTTL = cacheTTL
-		}
-	}
-
-	if Config.CacheTTL == 0 {
-		RemoteCache = cache.New(cache.NoExpiration, 10*time.Minute)
-	} else {
-		RemoteCache = cache.New(time.Duration(Config.CacheTTL)*time.Minute, 10*time.Minute)
 	}
 
 	if os.Getenv("WEBP_MAX_CACHE_SIZE") != "" {
