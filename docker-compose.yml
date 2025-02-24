@@ -1,0 +1,51 @@
+name: webp_server_go
+
+services:
+  redis:
+    restart: always
+    image: redis:7-alpine
+    command: redis-server --maxmemory 20mb --maxmemory-policy allkeys-lru --save 60 1 --loglevel warning
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  backend:
+    image: docker.io/holgerhuo/webp:deploy
+    restart: always
+    depends_on:
+      - redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - external
+    environment:
+      - MALLOC_ARENA_MAX=1
+      - REDIS_URL=redis://redis:6379/0
+    deploy:
+      resources:
+        limits:
+          memory: 100m
+          cpus: 1
+    ports:
+      - 127.0.0.1:3333:3333
+    volumes:
+      - output:/opt/exhaust
+      - metadata:/opt/metadata
+      - cache:/opt/remote-raw
+      - ./config.json:/etc/config.json:ro
+
+networks:
+  internal:
+    internal: true
+  external:
+volumes:
+  redis_data:
+  output:
+  metadata:
+  cache:
